@@ -26,7 +26,7 @@ def uniform(size:torch.Size,
 
     return torch.empty(size).uniform_(min_val, max_val)
 
-def ring(size:torch.Size):
+def ring(size:torch.Size) -> torch.Tensor:
     '''
     Initialize a tensor with the strategies explained in the paper:
         C. Gallicchio & A. Micheli (2020). Ring Reservoir Neural Networks for Graphs.
@@ -48,8 +48,7 @@ def ring(size:torch.Size):
 
     return eye.roll(1, 0)
 
-def sign(size:torch.Size,
-         value:float) -> torch.Tensor:
+def sign(size:torch.Size) -> torch.Tensor:
     
     '''
     Initialize a tensor with the strategies explained in the paper:
@@ -74,8 +73,4 @@ def sign(size:torch.Size,
     pi_matrix = torch.tensor([1 if int(digit) >= 5 else -1 for digit in pi_str])
 
     return pi_matrix.reshape(size)
-
-
-if __name__ == '__main__':
-    print(sign(torch.Size([3, 3]), 8))
 

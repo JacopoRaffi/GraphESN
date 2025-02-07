@@ -2,18 +2,47 @@ from torch_geometric.nn import MessagePassing
 import torch.nn
 import torch.nn.functional as F
 
+import initializers
+
 #TODO: change the way the weight matrices are initialized
 #TODO: after that check the GES property (Graph Embedding Stability)
 
 class GraphReservoir(MessagePassing):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, 
+                 input_size:int, 
+                 hidden_size:int,
+                 rho:float=0.9,
+                 omhega:float=1.0,
+                 input_initializer:str='uniform',
+                 recurrent_initializer:str='uniform',
+                 ):
+        '''
+        Reservoir Layer for the Graph Echo State Network
+
+        Parameters
+        ----------
+        input_size : int
+            The number of input features
+        hidden_size : int
+            The number of hidden units
+        rho : float, optional
+            The spectral radius of the recurrent weight matrix, by default 0.9
+        input_initializer : str, optional
+            The initializer for the input weight matrix. It can be 'uniform', 'ring', 'sign', by default 'uniform'
+
+        '''
         super(GraphReservoir, self).__init__(aggr='add')
         
         self.input_size = torch.nn.Parameter(torch.tensor(input_size), requires_grad=False)
         self.hidden_size = torch.nn.Parameter(torch.tensor(hidden_size), requires_grad=False)
 
-        self.W_in = torch.nn.Parameter(torch.randn(hidden_size, input_size), requires_grad=False)
-        self.W_h = torch.nn.Parameter(torch.randn(hidden_size, hidden_size), requires_grad=False)
+        input_initializer = getattr(initializers, input_initializer)
+        recurrent_initializer = getattr(initializers, recurrent_initializer)
+
+        self.W_in = torch.nn.Parameter(input_initializer(torch.Size([hidden_size, input_size])), requires_grad=True)
+        self.W_h = torch.nn.Parameter(recurrent_initializer(torch.Size([hidden_size, hidden_size])), requires_grad=True)
+
+
     
     @torch.no_grad()
     def forward(self, x:torch.Tensor, edge_index:torch.Tensor, x_neighbors:torch.Tensor = None, threshold:float=1e-3, max_steps:int=100) -> torch.Tensor:
