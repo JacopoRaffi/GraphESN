@@ -1,11 +1,9 @@
 import torch
-from math import pi
-
-#TODO: Implement the rescaling of the weights matrices
+import mpmath
 
 def uniform(size:torch.Size,
-            min_val:float, 
-            max_val:float) -> torch.Tensor:
+            min_val:float=-1.0, 
+            max_val:float=1.0) -> torch.Tensor:
     '''
     Initialize a tensor with uniform distribution.
 
@@ -68,9 +66,10 @@ def sign(size:torch.Size) -> torch.Tensor:
     torch.Tensor
         The initialized tensor
     '''
-    
-    pi_str = str(torch.tensor(pi).item())[2:2+(size[0]*size[1])]
-    pi_matrix = torch.tensor([1 if int(digit) >= 5 else -1 for digit in pi_str])
+    num_digits = size.numel() + 2
+    mpmath.mp.dps = num_digits
+    pi_str = mpmath.nstr(mpmath.pi, num_digits)[2:num_digits]
+    pi_matrix = torch.tensor([1 if int(digit) >= 5 else -1 for digit in pi_str], dtype=torch.float32)
 
     return pi_matrix.reshape(size)
 

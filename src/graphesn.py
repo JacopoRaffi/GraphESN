@@ -4,7 +4,6 @@ import torch.nn.functional as F
 
 import initializers
 
-#TODO: change the way the weight matrices are initialized
 #TODO: after that check the GES property (Graph Embedding Stability)
 
 class GraphReservoir(MessagePassing):
@@ -39,13 +38,17 @@ class GraphReservoir(MessagePassing):
         input_initializer = getattr(initializers, input_initializer)
         recurrent_initializer = getattr(initializers, recurrent_initializer)
 
-        self.W_in = torch.nn.Parameter(input_initializer(torch.Size([hidden_size, input_size])), requires_grad=True)
-        self.W_h = torch.nn.Parameter(recurrent_initializer(torch.Size([hidden_size, hidden_size])), requires_grad=True)
+        self.W_in = torch.nn.Parameter(input_initializer(torch.Size([hidden_size, input_size])), requires_grad=False)
+        self.W_h = torch.nn.Parameter(recurrent_initializer(torch.Size([hidden_size, hidden_size])), requires_grad=False)
+
+        # scale the weight matrices
+        self.W_in.mul_(omhega).float() 
+        self.W_h.div_(torch.linalg.eigvals(self.W_h).abs().max()).mul_(rho).float()
 
 
     
     @torch.no_grad()
-    def forward(self, x:torch.Tensor, edge_index:torch.Tensor, x_neighbors:torch.Tensor = None, threshold:float=1e-3, max_steps:int=100) -> torch.Tensor:
+    def forward(self, x:torch.Tensor, edge_index:torch.Tensor, x_neighbors:torch.Tensor = None, threshold:float=1e-3, max_steps:int=1000) -> torch.Tensor:
         '''
         Forward pass of the Graph Reservoir Network. The formula for the forward pass is given by:
         x = tanh(W_in @ u_in + tanh(W_h @ sum_{j \in N(i)} x_j))
