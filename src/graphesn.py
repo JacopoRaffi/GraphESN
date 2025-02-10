@@ -6,8 +6,6 @@ from sklearn.linear_model import RidgeClassifier
 
 import initializers
 
-#TODO: after that check the GES property (Graph Embedding Stability)
-
 class GraphReservoir(MessagePassing):
     def __init__(self, 
                  input_size:int, 
