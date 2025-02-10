@@ -21,7 +21,7 @@ def uniform(size:torch.Size,
     torch.Tensor
         The initialized tensor
     '''
-
+    
     return torch.empty(size).uniform_(min_val, max_val)
 
 def ring(size:torch.Size) -> torch.Tensor:

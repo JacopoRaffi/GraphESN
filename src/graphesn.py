@@ -146,10 +146,10 @@ class GraphESN(torch.nn.Module):
         '''
         x = self.reservoir(x, edge_index)
 
-        if batch:
+        if batch is not None:
             x = torch_geometric.nn.global_add_pool(x, batch)
         
-        x = self.readout.predict(x)
+        return torch.from_numpy(self.readout.predict(x))
 
     def fit(self, x, edge_index, batch, y):
         '''
@@ -172,7 +172,7 @@ class GraphESN(torch.nn.Module):
         '''
         x = self.reservoir(x, edge_index)
 
-        if batch:
+        if batch is not None:
             x = torch_geometric.nn.global_add_pool(x, batch)
         
         self.readout.fit(x, y)
