@@ -1,6 +1,8 @@
 from torch_geometric.nn import MessagePassing
+import torch_geometric.nn
 import torch.nn
 import torch.nn.functional as F
+from sklearn.linear_model import RidgeClassifier
 
 import initializers
 
@@ -28,7 +30,6 @@ class GraphReservoir(MessagePassing):
             The spectral radius of the recurrent weight matrix, by default 0.9
         input_initializer : str, optional
             The initializer for the input weight matrix. It can be 'uniform', 'ring', 'sign', by default 'uniform'
-
         '''
         super(GraphReservoir, self).__init__(aggr='add')
         
@@ -95,9 +96,85 @@ class GraphReservoir(MessagePassing):
         return x
 
 
+# Simple GraphESN classifier with just one reservoir layers
 class GraphESN(torch.nn.Module):
-    def __init__(self):
-        pass
+    def __init__(self, input_size:int, hidden_size:int, 
+                 rho:float=0.9, omhega:float=1.0, input_initializer:str='uniform', recurrent_initializer:str='uniform',
+                 tikhonov:float=1e-6):
+        
+        '''
+        Graph Echo State Network classifier model
 
-    def forward(self, x, edge_index):
-        pass
+        Parameters
+        ----------
+        input_size : int
+            The number of input features
+        hidden_size : int
+            The number of hidden units in the reservoir
+        rho : float, optional
+            The spectral radius of the recurrent weight matrix, by default 0.9
+        omhega : float, optional
+            The scale of the input weight matrix, by default 1.0
+        input_initializer : str, optional
+            The initializer for the input weight matrix. It can be 'uniform', 'ring', 'sign', by default 'uniform'
+        recurrent_initializer : str, optional
+            The initializer for the recurrent weight matrix. It can be 'uniform', 'ring', 'sign', by default 'uniform'
+        tikhonov : float, optional
+            The regularization parameter for the ridge regression, by default 1e-6
+        '''
+        
+        super(GraphESN, self).__init__()
+
+        self.reservoir = GraphReservoir(input_size, hidden_size, rho, omhega, input_initializer, recurrent_initializer)
+        self.readout = RidgeClassifier(alpha=tikhonov)
+
+    def forward(self, x, edge_index, batch=None):
+        '''
+        Forward pass of the GraphESN model
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The input tensor of shape [N, input_size] where N is the number of nodes in the graph
+        edge_index : torch.Tensor
+            The edge index tensor of shape [2, E] where E is the number of edges in the graph
+        batch : torch.Tensor, optional
+            The batch tensor of shape [N] where N is the number of nodes in the graph, by default None
+        
+        Returns
+        -------
+        torch.Tensor
+            The predicted labels of the graph of shape [N]
+        '''
+        x = self.reservoir(x, edge_index)
+
+        if batch:
+            x = torch_geometric.nn.global_add_pool(x, batch)
+        
+        x = self.readout.predict(x)
+
+    def fit(self, x, edge_index, batch, y):
+        '''
+        Fit the GraphESN model to the data
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The input tensor of shape [N, input_size] where N is the number of nodes in the graph
+        edge_index : torch.Tensor
+            The edge index tensor of shape [2, E] where E is the number of edges in the graph
+        batch : torch.Tensor
+            The batch tensor of shape [N] where N is the number of nodes in the graph
+        y : torch.Tensor
+            The target tensor of shape [N] where N is the number of nodes in the graph
+
+        Returns
+        -------
+        None
+        '''
+        x = self.reservoir(x, edge_index)
+
+        if batch:
+            x = torch_geometric.nn.global_add_pool(x, batch)
+        
+        self.readout.fit(x, y)
